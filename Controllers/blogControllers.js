@@ -4,18 +4,20 @@ import fs from 'fs';
 
 export const createBlog = async (req, res) => {
   try {
-    const { title, content, categories, date, publisher, } = req.body;
+    const { title, content, categories, date, publisher } = req.body;
     const imageFile = req.file;
 
-  const imageUpload = await imagekit.upload({
-            file: fs.readFileSync(imageFile.path),
-            fileName: imageFile.originalname,
-            folder: "SSBblogs", // optional folder
-        });
-        
-        const imageUrl = imageUpload.url;
+    const imageUpload = await imagekit.upload({
+      file: fs.readFileSync(imageFile.path),
+      fileName: imageFile.originalname,
+      folder: "SSBblogs",
+    });
 
-    const blog = await Blog.create({
+    fs.unlinkSync(imageFile.path);
+
+    const imageUrl = imageUpload.url;
+
+    const newBlog = await Blog.create({
       title,
       image: imageUrl,
       content,
@@ -25,15 +27,22 @@ export const createBlog = async (req, res) => {
       userId: req.userId,
     });
 
-    res.status(201).json({ success: true, blog });
+    // Re-fetch with populated user data
+    const populatedBlog = await Blog.findById(newBlog._id).populate('userId', 'username profilePic');
+
+    res.status(201).json({ success: true, blog: populatedBlog });
   } catch (err) {
     res.status(500).json({ message: 'Failed to create blog', error: err.message });
   }
 };
 
+
 export const getAllBlogs = async (req, res) => {
   try {
-    const blogs = await Blog.find().sort({ date: -1 });
+    const blogs = await Blog.find()
+  .populate('userId', 'username profilePic') // populate only needed fields
+  .sort({ date: -1 });
+
     res.status(200).json(blogs);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching blogs', error: err.message });
@@ -42,7 +51,9 @@ export const getAllBlogs = async (req, res) => {
 
 export const getMyBlogs = async (req, res) => {
   try {
-    const blogs = await Blog.find({ userId: req.userId });
+    const blogs = await Blog.find({ userId: req.userId })
+  .populate('userId', 'username profilePic');
+
     res.status(200).json(blogs);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching user blogs', error: err.message });
@@ -51,7 +62,9 @@ export const getMyBlogs = async (req, res) => {
 
 export const getBlogById = async (req, res) => {
   try {
-    const blog = await Blog.findById(req.params.id);
+    const blog = await Blog.findById(req.params.id)
+  .populate('userId', 'username profilePic');
+
     if (!blog) return res.status(404).json({ message: 'Blog not found' });
     res.status(200).json(blog);
   } catch (err) {
