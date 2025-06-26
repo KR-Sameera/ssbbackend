@@ -3,6 +3,7 @@ import imagekit from '../config/imagekit.js';
 import fs from 'fs';
 
 export const createBlog = async (req, res) => {
+  console.log("✔ Token passed, userId:", req.userId); // Add this line
   try {
     const { title, content, categories, date, publisher } = req.body;
     const imageFile = req.file;
